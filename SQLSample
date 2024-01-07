@@ -1,0 +1,81 @@
+use ShippingData;
+
+/*
+This analysis is based on shipping data obtained from Mavenanalytics.io
+Sales & order data for Northwind Traders, a fictitious gourmet food supplier, including information on customers, products, orders, shippers, and employees.
+*/
+/*
+The shipping company wanted to know some key details about its customers:
+Who ships the most and who spends the most on average?
+
+Audience: Sales, Account Management, Product Management
+Insight: This table can be used to determine specific account/sales strategies for each customer based on unit economics. 
+Example: Simons Bistro (SIMOB) has an average spend of $1366 which is near the top for customers but its spend is $0.082/unit freight which is near the bottom.
+Although its spend makes it look like SIMOB is a profitable customer, Northwind Traders may be losing money servicing them.
+
+Way forward for further research: What is the average unit cost and What is the profitability for each customer? Is the company losing money by servicing customers with poor unit economics?
+*/
+
+select 
+    c.companyName as company,
+    c.customerID as ID,
+    round(avg(o.freight),2) as avg_freight,
+    round(avg(od.unitPrice * od.quantity)) as avg_spend,
+    round((avg(o.freight) / avg(od.unitPrice * od.quantity)),4) as avg_unit_spend
+from customers as c
+inner join orders as o using (customerID)
+inner join order_details as od using (orderID)
+group by 1, 2
+order by avg_unit_spend desc;
+
+/*
+What are the annual sales trends by category?
+Audience: Executive leadership, product management, finance
+Insight: at first it appears that sales spiked in 2014 however, 2013 and 2015 are partial years. 
+I would provide the executive team with similar analysis in months or quarters to see better trend analysis. 
+*/
+
+
+select
+	cat.categoryID,
+    cat.categoryName,
+	round(sum(case
+		when o.orderdate between '2013-01-01' and '2013-12-31' then (od.unitprice * od.quantity)
+        else null
+        end),1) as '2013Revenue',
+    round(sum(case
+		when o.orderdate between '2014-01-01' and '2014-12-31' then (od.unitprice * od.quantity)
+        else null
+        end),1) as '2014Revenue',
+	round(sum(case
+		when o.orderdate between '2015-01-01' and '2015-12-31' then (od.unitprice * od.quantity)
+        else null
+        end),1) as '2015Revenue'
+    
+from categories as cat
+join products as p using (categoryID)
+join order_details as od using (productID)
+join orders as o using (orderID)
+group by 1, 2
+order by categoryid;
+
+-- I ran a simple max and min of the order dates to confrim my assumption of partial years in 2013 and 2015.
+
+Select max(orderdate), min(orderdate)
+from orders;
+
+/*
+Which shippers did we use the most in 2014?
+Audience: Purchasing evaluating shipping contracts.
+Shipper 2, United Package had the most volume at 153 vs Speedy Express at 133 and Federal Shipping at 122.
+*/
+
+Select
+	o.shipperID,
+    s.companyName,
+    count(o.orderID)
+from orders as o
+join shippers as s on o.shipperID = s.shipperID
+where orderdate = 2014
+group by o.shipperID, s.companyName
+order by shipperID;
